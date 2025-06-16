@@ -36,7 +36,22 @@
 
 void _main(void) {
     clrscr();
-    // printf("Hello!");
-    DrawMenuBorder(0, 24, 64, 72);
+    border_pattern_t DEFAULT_BORDER = (border_pattern_t) {
+      .pattern.split.pattern_h = {0xF0,0x00,0x00,0xF0, 0x00, 0x00, 0x00, 0x00},
+      .pattern.split.pattern_v = {0x90,0x90,0x90,0x90, 0x00, 0x00, 0x00, 0x00},
+      .corners.split.corners_bl= {0xA0,0xB0,0x80,0xF0, 0x00, 0x00, 0x00, 0x00},
+      .corners.split.corners_tr= {0xF0,0x10,0xD0,0x50, 0x00, 0x00, 0x00, 0x00},
+      .corners.split.corners_tl= {0xF0,0x80,0xB0,0xA0, 0x00, 0x00, 0x00, 0x00},
+      .corners.split.corners_br= {0x50,0xD0,0x10,0xF0, 0x00, 0x00, 0x00, 0x00},
+      .width = 4,
+      .height = 4
+    };
+    DrawMenuBorder(&DEFAULT_BORDER, 0, 76, 160-4, 20);
+    FontSetSys (F_4x6);
+    // y: 76 + border + padding
+    // x: border + padding
+    DrawStr (4+2, 76+4+2, "the quick brown cat jumped over the lazy", A_NORMAL);
+    DrawStr (4+2, 76+4+2+6, "fox and meowed until 12:00pm! bye-bye :)", A_NORMAL);
+    // y: 76 + border + padding + font height of prev line
     ngetchx();
 }

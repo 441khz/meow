@@ -1,3 +1,9 @@
 - clangd is just so badly broken...
 - implement tilp build from source
 - obviously finish the menu system
+- add an imagestudio devshell or roll our own
+    (will need wine, some pixel art editor (mspaint is ok [needs mfcu42dll (winetricks -q mfcu42)])
+    and need to write a derivation for imagestudio)
+    image studio is available on ticalc https://www.ticalc.org/archives/files/fileinfo/307/30736.html
+    in all honesty i think we can roll image studio on our own. they have RLE routines too
+- animation on textboxes
