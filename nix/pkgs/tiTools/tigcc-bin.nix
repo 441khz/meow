@@ -1,5 +1,6 @@
 { autoPatchelfHook
 , fetchzip
+, makeWrapper
 , stdenv
 , ...
 }:
@@ -16,6 +17,7 @@ stdenv.mkDerivation {
 
   nativeBuildInputs = [
     autoPatchelfHook
+    makeWrapper
   ];
 
   dontStrip = true;
@@ -27,5 +29,12 @@ stdenv.mkDerivation {
     cp -r doc/ $out/doc/
     cp -r include/ $out/include/
     cp -r lib $out/lib/
+  '';
+
+  postFixup = ''
+    find $out/bin -maxdepth 1 -executable -type f |
+      while read file; do
+        wrapProgram "$file" --set TIGCC $out
+      done
   '';
 }

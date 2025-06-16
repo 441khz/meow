@@ -36,7 +36,7 @@
         };
 
         packages = {
-          inherit (pkgs.tiTools) gcc4ti tiemu;
+          inherit (pkgs.tiTools) gcc4ti tiemu tigcc-bin;
 
           default = pkgs.tiTools.gcc4ti;
         };
