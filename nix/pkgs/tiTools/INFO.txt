@@ -1,0 +1,22 @@
+gcc4ti is lionel debroux's somewhat maintained fork of tigcc (updates once in a blue moon as of the early 2020s)
+tigcc is kevin kofler et al's version original version of tigcc (no longer maintained)
+
+gcc4ti can build from source on <=gcc10Stdenv and emit x64 binaries. We opt for this. Internally, the binaries are still named
+tigcc and what not, so they're easily intercompatible, much to the dismay of Kevin Kofler himself (see gcc4ti issues page).
+That feud between kofler and debroux has lasted for over 20 years....
+
+tigcc can build from source, but I've only managed to get it to work building against gcc49Stdenv.
+That source build derivation for tigcc is not included here right now because the
+flake is not pinned to an old enough version of nixpkgs which serves gcc49Stdenv.
+
+So, tigcc is built from a binary hosted on the tigcc website. Please note that tigcc binary version is i686, not amd64!
+
+There is a nasty "bug" where Nix strips the tigcc.a library archive, and the linker throws a fit.
+
+If you ever see a linker error like:
+    ... tigcc.a: Error: Archive has no symbol table
+
+You really should set dontStrip = true in your derivation!
+
+texinfo4 is here for tiemu. it needs that specific version...
+

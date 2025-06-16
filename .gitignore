@@ -1,0 +1,21 @@
+# CMake
+/build/
+/build-*/
+
+# clangd
+/.cache/
+compile_commands.json
+*.pch
+
+# Nix
+/result
+/result-*
+
+# direnv
+/.direnv/
+
+# VS Code
+/.vscode/
+
+# TI68k binaries
+*.89z

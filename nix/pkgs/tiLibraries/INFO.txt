@@ -1,0 +1,5 @@
+libti{cables, calcs, files, usb} derivations.
+These are older versions that are used to build tiemu-3.02.
+I believe there are some newer ones available on nixpkgs,
+but even more cutting edge ones are needed for the latest versions
+of tiemu (libticonv 1.16 mini or something, not served here or by nixpkgs).

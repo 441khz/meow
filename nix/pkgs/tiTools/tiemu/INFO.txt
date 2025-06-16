@@ -1,0 +1,2 @@
+It seems some versions of GCC break the old-school tiemu2-style debugger.
+Tiemu w/ GDB hasn't worked on any GCC version at all, unfortunately
