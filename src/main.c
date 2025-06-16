@@ -9,11 +9,34 @@
 #define asm(x)
 #endif /* __CLANG__ */
 
-#include <stdio.h>
-#include <kbd.h>
+#include <tigcclib.h>
+#include "menu.h"
+
+/*
+  draw_menu_border (x, y, w, h)
+  draw_menu_cursor (x, y)
+  draw_menu_text   (fmt, x, y, ...)
+
+ -------------
+  fight   bag
+  monst   run
+ -------------
+
+ // ... somewhere in the game loop ...
+
+ if(menu_active) {
+    global arr of 3-tuples = 
+    
+    [ 
+      (cursorx, cursory, function callback),
+      ....
+    ]
+ }
+*/
 
 void _main(void) {
     clrscr();
-    printf("Hello!");
+    // printf("Hello!");
+    DrawMenuBorder(0, 24, 64, 72);
     ngetchx();
 }

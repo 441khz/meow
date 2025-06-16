@@ -1,2 +1,2 @@
 Diagnostics:
-  Suppress: ['-Wunknown-attributes', 'keyword_as_parameter']
+  Suppress: ['-Wunknown-attributes', 'keyword_as_parameter', 'typecheck_call_too_many_args']
