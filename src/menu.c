@@ -25,26 +25,32 @@
  }
 */
 
-/*
-inline void _Sprite8Rot90InPlace(uint8_t *mat, uint8_t dim)
-{
-  // im quite worried about codegen here. there is no native 64 bit support
-  // on this microprocessor.... this will not be pretty.
-  // this'll work, but i hate it, and there's probably a better soln.
-
-  uint16_t x = *(uint16_t *)mat; // mat is a set of packed 8 packed u8s
-  // sprite values are packed so this is a little wonky
-  uint64_t r = 0;
-  for (uint8_t i = 0; i < 16; ++i) {
-    r += ((x >> i) & 1) << (((i % 4) * 4) + (3 - i / 4));
-  } // https://stackoverflow.com/questions/1667591/rotating-a-bitmap-90-degrees
-  *(uint64_t *)mat = r; // oof! don't look at the assembler...
-} */
-
 inline void DrawSimpleMenuBorder(uint8_t x, uint8_t y, uint8_t w, uint8_t h)
 {
   WIN_RECT rect = {x, y, x+w, y+h};
-  DrawClipRect (&rect, ScrRect, A_NORMAL);
+  SetPlane(0);
+  DrawClipRect (&(WIN_RECT){x, y, x+w, y+h}, &(SCR_RECT){0, 0, 160, 100}, A_NORMAL);
+  SetPlane(1);
+  DrawClipRect (&(WIN_RECT){x, y, x+w, y+h}, &(SCR_RECT){0, 0, 160, 100}, A_NORMAL);
+}
+
+/**
+  BIG TODO---
+  implement double buffering.
+  unfortunately, while drawing a cursor is simple, restoring the background is not.
+  its likely that we'll have to draw the cursor on some higher "layer", and then
+  blit the two layers together so can we easily redraw the background by restoring the original layer.
+  I'm putting this under cursor because cursors can easily screw with the screen causing little 8x8
+  empty cursor spots to be left where they once lay....
+  Obviously once the menu is closed the game will probably ask to redraw, and then you're fine...
+  but still, even the menus themselves are prone to this unless the menu functions are asked to be redrawn,
+  which could be done by timer interrupt but is needlessly complicated and limits the framerate.
+  
+  I think we should just do double buffering instead.
+  .... we could just AND the screen though. lol. probably will do that first.
+*/
+inline void DrawMenuCursor(uint8_t x, uint8_t y) {
+  Sprite8(x, y, 4, (uint8_t []){0xA0,0xB0,0x80,0xF0, 0x00, 0x00, 0x00, 0x00}, GetPlane(DARK_PLANE), SPRT_XOR);
 }
 
 /**
@@ -54,8 +60,11 @@ inline void DrawSimpleMenuBorder(uint8_t x, uint8_t y, uint8_t w, uint8_t h)
  * computing the mtx transpose just in time would save a little memory if we have many borders.
  * maybe we could draw big boxes with sprite16/32, somehow memcpying and then drawing with sprite16/32
  * not sure if it would be much faster, id have to benchmark it.
- *
+ * 
+ * NOTE ... As it is now, the first pixel of the first block is drawn at x, and the last pixel is at x+w+pattern->width.
+ *      ... WLOG for y/height.
  * TODO ... rename DrawMenuBox? or maybe we separate bkgd drawing...? we'll see.
+ * TODO ... specify box draw parameters, reverse bkgd transparent, etc.
  */
 void DrawMenuBorder(border_pattern_t *pattern, uint8_t x, uint8_t y, uint8_t w, uint8_t h)
 {
