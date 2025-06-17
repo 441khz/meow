@@ -7,3 +7,5 @@
     image studio is available on ticalc https://www.ticalc.org/archives/files/fileinfo/307/30736.html
     in all honesty i think we can roll image studio on our own. they have RLE routines too
 - animation on textboxes
+- clang format
+- greyscale wrappers for text and whatnot
