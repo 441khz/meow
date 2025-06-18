@@ -10,3 +10,5 @@
     would be helpful for making borders
 - animation on textboxes
 - greyscale wrappers for text and whatnot
+- add doxygen to CMakeLists.txt
+- add "sphinx" for nicer documentation files
