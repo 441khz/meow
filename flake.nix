@@ -30,9 +30,12 @@
             tiTools.gcc4ti
             tiTools.tiemu
             llvmPackages.clang-tools
+
+            doxygen
           ];
 
           TIGCC = "${pkgs.tiTools.gcc4ti}";
+          CLANGD_FLAGS = "--header-insertion=never";
         };
 
         packages = {

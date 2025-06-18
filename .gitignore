@@ -19,3 +19,9 @@ compile_commands.json
 
 # TI68k binaries
 *.89z
+*.9xz
+*.v2z
+
+# Doxygen
+doc/html/*
+doc/latex/*
