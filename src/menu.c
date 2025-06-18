@@ -19,12 +19,15 @@ inline void DrawSimpleMenuBorder(uint8_t x, uint8_t y, uint8_t w, uint8_t h) {
   DrawClipRect(&(WIN_RECT){x, y, x + w, y + h}, INLINE_NOCLIP, A_NORMAL);
 }
 
-/**
- * @brief Draws a menu cursor. The look is hardcoded for now and drawn as `XOR` on `DARK_PLANE` only
- * (not both!)
- */
-inline void DrawMenuCursor(uint8_t x, uint8_t y) {
+/** @brief Draws a 4px menu cursor on plane 1 using an 8px draw routine in XOR. */
+inline void DrawMenuCursor4(uint8_t x, uint8_t y) {
   Sprite8(x, y, 4, (uint8_t[]){0xA0, 0xB0, 0x80, 0xF0, 0x00, 0x00, 0x00, 0x00}, GetPlane(DARK_PLANE),
+          SPRT_XOR);
+}
+
+/** @brief Draws a big 8px menu cursor in XOR */
+inline void DrawMenuCursor8(uint8_t x, uint8_t y) {
+  Sprite8(x, y, 8, (uint8_t[]){0x80, 0xC0, 0xE0, 0xF0, 0xF0, 0xE0, 0xC0, 0x80}, GetPlane(DARK_PLANE),
           SPRT_XOR);
 }
 

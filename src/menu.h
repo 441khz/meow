@@ -24,6 +24,7 @@
  * @brief Specifies a border pattern (sprite set).
  * @todo This is a little memory costly for right now, but I couldn't figure out the graphics
  * code to rotate a packed bitmap yet...
+ * sz 49 bytes
  */
 typedef struct border_pattern_t {
   union {
@@ -55,8 +56,8 @@ typedef struct border_pattern_t {
  * will handle it and move to the next (cursor_x, cursor_y) in the active menu_t
  * list. It is up to you, the programmer to draw the menu in a way that looks
  * right by using DrawMenuBorder, DrawStr, etc!
- * @todo custom menu ordering, remove (void *)param?
- * @todo
+ *
+ * 14 byte sz
  */
 typedef struct menu_item_t {
   uint8_t cursor_x;
@@ -76,8 +77,8 @@ typedef struct menu_item_t {
       uint32_t down : 8;
       uint32_t left : 8;
       uint32_t right : 8;
-    } idx; // is this really a "Struct"?
-  } jump;  // sizeof(...) = 4? why does clangd say 8 ... uh-oh...
+    } idx;
+  } jump;
 
 } menu_item_t;
 
@@ -90,7 +91,8 @@ typedef struct menu_t {
   menu_item_t (*items)[];
 } menu_t;
 
-inline void DrawMenuCursor(uint8_t x, uint8_t y);
+inline void DrawMenuCursor4(uint8_t x, uint8_t y);
+inline void DrawMenuCursor8(uint8_t x, uint8_t y);
 void DrawSimpleMenuBorder(uint8_t x, uint8_t y, uint8_t w, uint8_t h);
 void DrawMenuBorder(border_pattern_t *pattern, uint8_t x, uint8_t y, uint8_t w, uint8_t h);
 
