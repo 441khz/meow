@@ -78,17 +78,17 @@ void _main(void) {
   menu_item_t item1 = {.cursor_x = MENU_X + OP1_CURSOR_X,
                        .cursor_y = MENU_Y + OP1_CURSOR_Y,
                        .callback = SomethingStupid,
-                       .opaque = (void *)"opt1",
+                       .opaque = (void *)"op1",
                        .jump.table = {MENU_NIL, 1, MENU_NIL, 1}};
   menu_item_t item2 = {.cursor_x = MENU_X + OP2_CURSOR_X,
                        .cursor_y = MENU_Y + OP2_CURSOR_Y,
                        .callback = SomethingStupid,
-                       .opaque = (void *)"opt2",
+                       .opaque = (void *)"op2",
                        .jump.table = {0, 2, 0, 2}};
   menu_item_t item3 = {.cursor_x = MENU_X + OP3_CURSOR_X,
                        .cursor_y = MENU_Y + OP3_CURSOR_Y,
                        .callback = SomethingStupid,
-                       .opaque = (void *)"opt3",
+                       .opaque = (void *)"op3",
                        .jump.table = {1, MENU_NIL, 1, MENU_NIL}};
 
   /** @todo the amount of indirection here is kinda concerning .... */
