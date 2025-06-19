@@ -1,11 +1,8 @@
 #include <tigcclib.h>
 
 #include "gray.h"
+#include "macros.h"
 #include "menu.h"
-
-// shitty hack for clipping against the size of the ti89 screen.
-#define INLINE_NOCLIP                                                                                   \
-  &(SCR_RECT) {{0, 0, 160, 100}}
 
 /**
  * @brief Uses OS routines to draw a simple rectangular border. Doesn't draw background like
@@ -14,50 +11,26 @@
 inline void DrawSimpleMenuBorder(uint8_t x, uint8_t y, uint8_t w, uint8_t h) {
   WIN_RECT rect = {x, y, x + w, y + h};
   SetPlane(0);
-  DrawClipRect(&(WIN_RECT){x, y, x + w, y + h}, INLINE_NOCLIP, A_NORMAL);
+  DrawClipRect(&rect, INLINE_NOCLIP, A_NORMAL);
   SetPlane(1);
-  DrawClipRect(&(WIN_RECT){x, y, x + w, y + h}, INLINE_NOCLIP, A_NORMAL);
+  DrawClipRect(&rect, INLINE_NOCLIP, A_NORMAL);
 }
 
-/** @brief Draws a 4px menu cursor on plane 1 using an 8px draw routine in XOR. */
+/** @brief Draws a 4px menu cursor using an 8px draw routine in XOR. */
 inline void DrawMenuCursor4(uint8_t x, uint8_t y) {
-  Sprite8(x, y, 4, (uint8_t[]){0xA0, 0xB0, 0x80, 0xF0, 0x00, 0x00, 0x00, 0x00}, GetPlane(DARK_PLANE),
-          SPRT_XOR);
+  uint8_t cur[] = {0xA0, 0xB0, 0x80, 0xF0, 0x00, 0x00, 0x00, 0x00};
+  _Sprite8AM(x, y, 4, cur, SPRT_XOR);
 }
 
-/** @brief Draws a big 8px menu cursor on plane 1 in XOR */
+/** @brief Draws a big 8px menu cursor in XOR */
 inline void DrawMenuCursor8(uint8_t x, uint8_t y) {
-  Sprite8(x, y, 8, (uint8_t[]){0x80, 0xC0, 0xE0, 0xF0, 0xF0, 0xE0, 0xC0, 0x80}, GetPlane(DARK_PLANE),
-          SPRT_XOR);
+  uint8_t cur[] = {0x80, 0xC0, 0xE0, 0xF0, 0xF0, 0xE0, 0xC0, 0x80};
+  _Sprite8AM(x, y, 8, cur, SPRT_XOR);
 }
-
-/**
- * @todo better error handling for debug
- */
-#ifndef NDEBUG
-#define _STOP()                                                                                         \
-  {                                                                                                     \
-    GrayOff();                                                                                          \
-    FontSetSys(F_8x10);                                                                                 \
-    MoveTo(0, 0);                                                                                       \
-    printf("STOP!\n%s\nLine %d       ", __func__, __LINE__);                                            \
-    while (1)                                                                                           \
-      ;                                                                                                 \
-  }
-#define _ASSERT(cond)                                                                                   \
-  {                                                                                                     \
-    if (!(cond)) {                                                                                      \
-      _STOP();                                                                                          \
-    }                                                                                                   \
-  }
-#else
-#define _STOP(code) ((void)0)
-#define _ASSERT(cond) ((void)0)
-#endif
 
 /**
  * @brief Given a pattern, draw a menu border of specific size and shape. Draws a white background
- * behind it by OS routines.
+ * behind it by OS routines. Will draw _AS CLOSE AS POSSIBLE_ to the shape specified.
  * @param[pattern] The pattern to draw
  * @param[x] - x coordinate to draw the top left corner
  * @param[y] - y coordinate to draw the top left corner
@@ -74,52 +47,63 @@ inline void DrawMenuCursor8(uint8_t x, uint8_t y) {
  * The argument holds without loss of generality for y/height.
  * @todo rename to `DrawMenuBox`? or maybe we separate bkgd drawing...? we'll see.
  * @todo specify box draw parameters, reverse bkgd transparent, etc.
+ * @todo implement advanced routines for drawing strange boxes (non-multiple of 8 by using Sprite8 XOR
+ * under/over-draw)
  */
 void DrawMenuBorder(border_pattern_t *pattern, uint8_t x, uint8_t y, uint8_t w, uint8_t h) {
 
   _ASSERT(pattern);
+  // for now, i see no reason to have super small boxes.
+  // i'd have to do some very special underdraw routines to get it to fill <16 in a nice looking way.
+  _ASSERT(w >= 2 * pattern->width);
+  _ASSERT(w >= 2 * pattern->width);
 
-  /* (slow) clear routine */
+  // (slow) clear routine
   SetPlane(DARK_PLANE);
   ScrRectFill(&(SCR_RECT){{x, y, x + w + pattern->width, y + h}}, INLINE_NOCLIP, A_REVERSE);
   SetPlane(LIGHT_PLANE);
   ScrRectFill(&(SCR_RECT){{x, y, x + w + pattern->width, y + h}}, INLINE_NOCLIP, A_REVERSE);
 
-  /* draw corners first */
-  Sprite8(x, y, pattern->height, pattern->corners.split.corners_tl, GetPlane(DARK_PLANE), SPRT_XOR);
-  Sprite8(x + w, y, pattern->height, pattern->corners.split.corners_tr, GetPlane(DARK_PLANE), SPRT_XOR);
-  Sprite8(x, y + h, pattern->height, pattern->corners.split.corners_bl, GetPlane(DARK_PLANE), SPRT_XOR);
-  Sprite8(x + w, y + h, pattern->height, pattern->corners.split.corners_br, GetPlane(DARK_PLANE),
-          SPRT_XOR);
+  // draw top left corner first
+  _Sprite8Grey(x, y, pattern->height, pattern->corners.plane.dark.tl, pattern->corners.plane.light.tl,
+               SPRT_XOR);
 
   /* draw the top and bottom bars */
-  for (uint8_t i = pattern->width; i <= w - pattern->width; i += pattern->width) {
-    Sprite8(x + i, y, pattern->height, pattern->pattern.split.pattern_h, GetPlane(DARK_PLANE), SPRT_XOR);
-    Sprite8(x + i, y + h, pattern->height, pattern->pattern.split.pattern_h, GetPlane(DARK_PLANE),
-            SPRT_XOR);
+  uint8_t i; // when loop finished, i should be rightmost drawn pixel yet.
+  for (i = pattern->width; i <= w - pattern->width; i += pattern->width) {
+    // top horiz bar
+    _Sprite8Grey(x + i, y, pattern->height, pattern->pattern.plane.dark.horz_top,
+                 pattern->pattern.plane.light.horz_top, SPRT_XOR);
   }
+
+  // draw top right
+  _Sprite8Grey(x + i, y, pattern->height, pattern->corners.plane.dark.tr,
+               pattern->corners.plane.light.tr, SPRT_XOR);
 
   /* draw the left and right bars */
-  for (uint8_t i = pattern->height; i <= h - pattern->height; i += pattern->height) {
-    Sprite8(x, y + i, pattern->height, pattern->pattern.split.pattern_v, GetPlane(DARK_PLANE), SPRT_XOR);
-    Sprite8(x + w, y + i, pattern->height, pattern->pattern.split.pattern_v, GetPlane(DARK_PLANE),
-            SPRT_XOR);
+  uint8_t j; // when loop finished, j should be bottom most drawn pixel yet.
+  for (j = pattern->height; j <= h - pattern->height; j += pattern->height) {
+    _Sprite8Grey(x, y + j, pattern->height, pattern->pattern.plane.dark.vert_left,
+                 pattern->pattern.plane.light.vert_left, SPRT_XOR);
+    _Sprite8Grey(x + i, y + j, pattern->height, pattern->pattern.plane.dark.vert_right,
+                 pattern->pattern.plane.light.vert_right, SPRT_XOR);
   }
 
-  /**
-    @todo also, TODO: this will only draw on one plane (for the sake of speed)
-    but what if we want greyscale borders (2x the memory womp womp) or if
-    we just want dark borders? (gotta run the whole thing again with
-    `GetPlane(LIGHT_PLANE)`)!
-  */
-}
+  for (i = pattern->width; i <= w - pattern->width; i += pattern->width) {
+    // top horiz bar
+    _Sprite8Grey(x + i, y + j, pattern->height, pattern->pattern.plane.dark.horz_bot,
+                 pattern->pattern.plane.light.horz_bot, SPRT_XOR);
+  } // we can't group this with line ~135 because +j is required. i think we can precompute j though, but
+    // it'd cost a modulo/div.
 
-/**
- * @note I'm really not too sure if we should keep these static or if we should pass the storage of menu
- * manager information off to the programmer, and change the prototypes to be like
- * SetupMenuManager(menu_manager_t *mm, menu_t *menu); For now, I'm keeping this static. I don't see why
- * we'd have >1 menu manager at a time, and space is a concern.
- */
+  // draw bottom left
+  _Sprite8Grey(x, y + j, pattern->height, pattern->corners.plane.dark.bl,
+               pattern->corners.plane.light.bl, SPRT_XOR);
+
+  // draw bottom right
+  _Sprite8Grey(x + i, y + j, pattern->height, pattern->corners.plane.dark.br,
+               pattern->corners.plane.light.br, SPRT_XOR);
+}
 
 static menu_t *_MM_ActiveMenu;
 static uint8_t _MM_InitialIdx;
@@ -127,8 +111,9 @@ static void (*_MM_CursorFunc)(uint8_t, uint8_t);
 
 /**
  * @brief Resets the menu manager. Please call this when you're done with the menu manager.
- * Otherwise, stuff might be left over, especially if you have a lazy call to `StartMenuManager()` without a `SetupMenuManager()`.
-*/
+ * Otherwise, stuff might be left over, especially if you have a lazy call to `StartMenuManager()`
+ * without a `SetupMenuManager()`.
+ */
 inline void ResetMenuManager() { _MM_ActiveMenu = NULL; }
 
 /**
@@ -169,11 +154,11 @@ void SetupMenuManager(menu_t *menu, uint8_t initial_idx, uint8_t cursor_sz) {
     asm("NOP");                                                                                         \
   }
 
-/** 
+/**
  * @brief Display driver for the menu manager. !!This is a blocking function!!
  * Will display cursor and handle keyboard actions to move the cursor according to menu information
  * set in SetupMenuManager. Ends when ResetMenuManager() is called or ESC is pressed.
-*/
+ */
 void StartMenuManager() {
 
   _ASSERT(_MM_ActiveMenu);
@@ -222,7 +207,8 @@ void StartMenuManager() {
     }
     END_KEYTEST
 
-    if (candidate_jump_idx != MENU_NIL && candidate_jump_idx < _MM_ActiveMenu->length) {
+    if (candidate_jump_idx != MENU_NIL) {
+      _ASSERT(candidate_jump_idx < _MM_ActiveMenu->length); // fault in the menu data itself
       // remove the current cursor (since we are XOR)
       (_MM_CursorFunc)(active_item->cursor_x, active_item->cursor_y);
 
@@ -233,10 +219,13 @@ void StartMenuManager() {
       // draw the next
       (_MM_CursorFunc)(active_item->cursor_x, active_item->cursor_y);
 
-#ifndef NDEBUG
+#ifdef FALSE
       // debug info
+      uint8_t restore = FontGetSys();
+      FontSetSys(F_4x6);
       sprintf(dbg_txt, "Active: %u             ", active_menu_item_idx);
       DrawStr(0, 15, dbg_txt, A_REVERSE);
+      FontSetSys(restore);
 #endif
     }
 
@@ -247,4 +236,43 @@ void StartMenuManager() {
   SetIntVec(AUTO_INT_5, vector_handle_int5);
   GraySetInt1Handler(vector_handle_int1);
   /** @todo should we reset menu manager here or should the programmer ? */
+}
+
+#include "player.h"
+
+static uint8_t _CursorBlinkReady;
+
+// this can cause interrupt 5/auto-int 5/int5 bugs, we do NOT tailcall prev vector!
+DEFINE_INT_HANDLER(_ToggleCursorBlink) { DrawMenuCursor8(160 - 8 - 4, 100 - 8); }
+
+/**
+ * @brief Basic routine to display text messages. Everything here's predetermined, and it uses the menu
+ * manager system. Good example if you want to learn how to use MenuManager.
+ * @todo Buggy routine. Int5 really shouldn't be used during keytest. Do we really have to busy loop
+ * here? Good enough for now.
+ * @todo unfinished... 6/19/2025
+ */
+
+void DisplayStrTextBox(char *str) {
+#define BOX_X 0
+#define BOX_Y 60
+#define BOX_W 160 - 4
+#define BOX_HT 40 - 4
+
+  (void)str;
+  (void)_CursorBlinkReady;
+
+  /* we will use PRG to blink the cursor ourselves. pray rowread isn't upset! */
+  INT_HANDLER vector_handle_int5 = GetIntVec(AUTO_INT_5);
+  uint16_t prg_prev = PRG_getRate();
+  SetIntVec(AUTO_INT_5, _ToggleCursorBlink);
+  PRG_setRate(2);
+
+  DrawMenuBorder(Player.border, BOX_X, BOX_Y, BOX_W, BOX_HT);
+
+  while (!_keytest(RR_2ND))
+    ;
+
+  SetIntVec(AUTO_INT_5, vector_handle_int5);
+  PRG_setRate(prg_prev);
 }
