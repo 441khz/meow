@@ -14,12 +14,6 @@ void ExampleCallback(void *pr) {
   DrawStr(0, 90, s, A_REVERSE);
 }
 
-/* crude 'debounce' routine to slow polling time */
-#define DEBOUNCE_WAIT()                                                                                 \
-  for (int16_t i = 0; i < INT16_MAX; i++) {                                                             \
-    asm("NOP");                                                                                         \
-  }
-
 /* commented and fully-featured demo of the menu system :) */
 void _main(void) {
 
@@ -35,14 +29,6 @@ void _main(void) {
 
   GrayOn();
   ClrScr();
-
-  /* disable Int5, hook Int1 to greyscale ONLY. (req'd to poll keyboard.) */
-  INT_HANDLER vector_handle_int5;
-  INT_HANDLER vector_handle_int1;
-  vector_handle_int5 = GetIntVec(AUTO_INT_5);
-  vector_handle_int1 = GetGrayInt1Handler();
-  SetIntVec(AUTO_INT_5, DUMMY_HANDLER);
-  GraySetInt1Handler(DUMMY_HANDLER);
 
 /* step 1 - draw menu */
 #define MENU_X 0
@@ -110,72 +96,17 @@ void _main(void) {
                 |
                 v
                option 2
-*/
+  */
 
   menu_t menu = (menu_t){.length = sizeof(menu_opts) / sizeof(menu_item_t),
                          .items = (menu_item_t(*)[])(&menu_opts)};
 
   /* step 3 - the actual menu handler */
-  menu_t *active_menu = &menu;
-  uint8_t active_menu_item_idx = 0;
-  menu_item_t *active_item = &(*(active_menu->items))[active_menu_item_idx];
-  uint8_t candidate_jump_idx;
-  char dbg_txt[64];
+  SetupMenuManager(&menu, 0, 8);
+  StartMenuManager();
 
-  GKeyFlush();
-
-  DrawMenuCursor8(active_item->cursor_x, active_item->cursor_y); // initial draw
-
-  while (active_menu_item_idx != MENU_NIL) {
-
-    BEGIN_KEYTEST
-    if (_keytest_optimized(RR_UP)) {
-      candidate_jump_idx = active_item->jump.idx.up;
-    } else if (_keytest_optimized(RR_DOWN)) {
-      candidate_jump_idx = active_item->jump.idx.down;
-    } else if (_keytest_optimized(RR_LEFT)) {
-      candidate_jump_idx = active_item->jump.idx.left;
-    } else if (_keytest_optimized(RR_RIGHT)) {
-      candidate_jump_idx = active_item->jump.idx.right;
-    } else if (_keytest_optimized(RR_ESC)) {
-      break;
-    } else if (_keytest_optimized(RR_2ND)) {
-      active_item->callback(active_item->opaque);
-      DEBOUNCE_WAIT();
-      continue;
-    } else {
-      continue; // if no keys pressed, just continue.
-    }
-    END_KEYTEST
-
-    if (candidate_jump_idx != MENU_NIL && candidate_jump_idx < active_menu->length) {
-      // remove the current cursor (since we are XOR)
-      DrawMenuCursor8(active_item->cursor_x, active_item->cursor_y);
-
-      // set the new active item
-      active_menu_item_idx = candidate_jump_idx;
-      active_item = &(*(active_menu->items))[active_menu_item_idx];
-
-      // draw the next
-      DrawMenuCursor8(active_item->cursor_x, active_item->cursor_y);
-
-      // debug info
-      sprintf(dbg_txt, "Active: %u             ", active_menu_item_idx);
-      DrawStr(MENU_X, MENU_Y, dbg_txt, A_REVERSE);
-    } else {
-      DrawStr(MENU_X, MENU_Y, "Can't jump now!", A_REPLACE);
-    }
-
-    DEBOUNCE_WAIT();
-  }
-
-  /* restore ints and say goodbye */
-  SetIntVec(AUTO_INT_5, vector_handle_int5);
-  GraySetInt1Handler(vector_handle_int1);
-  GrayOff();
+  /* cleanup and say goodbye */
+  ResetMenuManager();
   ClrScr();
-  FontSetSys(F_8x10);
-  DrawStr(0, 0, "Press any key", A_REVERSE);
-  GKeyFlush();
-  ngetchx();
+  GrayOff();
 }

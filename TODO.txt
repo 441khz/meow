@@ -12,3 +12,4 @@
 - greyscale wrappers for text and whatnot
 - add doxygen to CMakeLists.txt
 - add "sphinx" for nicer documentation files
+- static assert would be very very nice ....

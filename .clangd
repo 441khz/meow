@@ -1,5 +1,5 @@
 Diagnostics:
-  Suppress: ['-Wunknown-attributes', 'keyword_as_parameter', 'typecheck_call_too_many_args']
+  Suppress: ['-Wunknown-attributes', 'keyword_as_parameter', 'typecheck_call_too_many_args', 'typecheck_lvalue_casts_not_supported']
 
 InlayHints:
   Designators: No
