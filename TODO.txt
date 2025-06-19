@@ -9,7 +9,16 @@
 
     would be helpful for making borders
 - animation on textboxes
+    idea for this is that we draw the growing box on one plane so it almost looks "transparent"
+    then once the box is fully drawn we can work w both planes or whatever.
+    by "growing" i just mean like, from the center growing out, or maybe a wipe or something.
+    perhaps you can have ANIM_WIPE_R, ANIM_WIPE_L, ANIM_GROW_C? (or we could do function ptrs to the anims?)
 - greyscale wrappers for text and whatnot
 - add doxygen to CMakeLists.txt
 - add "sphinx" for nicer documentation files
 - static assert would be very very nice ....
+- sound engine? maybe some crude waveforms, tiemu has sound support.
+     i'd like to benchmark how costly it is, and for game code would require interleaving jumps to the audio routine
+     or perhaps interrupt timing.
+     i believe AutoInt1 can be used for this purpose by redirecting GetGrayInt1Handler. would have to make
+     changes to the menu code, but AutoInt1 is quite fast (how fast?), much faster than AI5/PRG.
