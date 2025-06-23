@@ -78,9 +78,8 @@ void GameMainMenuToggleBorder(void *cursor) {
   }
 
   GameDrawMainMenu();
-  // the menu manager cursor has been overwritten, so we redraw it
-  uint8_t (*cursor_coords)[2] = cursor;
-  DrawMenuCursor8((*cursor_coords)[0], (*cursor_coords)[1]); // i know the fn call is non fixed, but idc. im sleepy
+
+  (void)cursor;
 }
 
 /**
@@ -160,16 +159,19 @@ void _main(void) {
   // menu_padx/pady change when border size changes, but we never call SetupMM more than once.
   // I'm too lazy for that right now, so fixed offset of 8.
 
+  char p[] = "OK to wipe save data? The quick brown fox jumped over the lazy kitty. This is a long long string.";
   /* step 1 - set up handlers and menu cursors */
-  menu_item_t item0 = {.cursor_x = MENU_PADX + OP0_CURSOR_X,
-                       .cursor_y = MENU_PADY + OP0_CURSOR_Y,
-                       .callback = dummy,
-                       .jump.table = {MENU_NIL, 1, MENU_NIL, MENU_NIL}}; // {up,dn,lf,rg}
+  menu_item_t item0 = {
+      .cursor_x = MENU_PADX + OP0_CURSOR_X,
+      .cursor_y = MENU_PADY + OP0_CURSOR_Y,
+      .callback = (void (*)(void *))
+          DisplayStrTextBox, /** @todo everythings a pointer anyways. less strict callback typing? */
+      .opaque = p,
+      .jump.table = {MENU_NIL, 1, MENU_NIL, MENU_NIL}}; // {up,dn,lf,rg}
   menu_item_t item1 = {.cursor_x = MENU_PADX + OP1_CURSOR_X,
                        .cursor_y = MENU_PADY + OP1_CURSOR_Y,
                        .callback = GameMainMenuToggleBorder,
-                       .opaque = (void *)((uint8_t[2]){MENU_PADX + OP1_CURSOR_X,
-                                                       MENU_PADY + OP1_CURSOR_Y}), // shitty hack for when I get around to fixing big comment above.
+                       .opaque = (void *)1, // the option to set the initial idx to on redraw.
                        .jump.table = {0, MENU_NIL, MENU_NIL, MENU_NIL}};
 
   menu_item_t menu_opts[] = {item0, item1};
@@ -177,8 +179,20 @@ void _main(void) {
   menu_t menu = (menu_t){.length = sizeof(menu_opts) / sizeof(menu_item_t),
                          .items = (menu_item_t(*)[])(&menu_opts)};
 
-  SetupMenuManager(&menu, 0, CURSOR_WIDTH);
-  StartMenuManager();
+  uint8_t initial_idx = 0;
+  while (1) {
+    SetupMenuManager(
+        &menu, initial_idx,
+        CURSOR_WIDTH); // not entirely necessary since no other menus or interrupts should be called.
+    menu_item_t *opt = StartMenuManager();
+    if (opt && opt->callback) { // you can determine how you exited: if opt is false, ESC. if
+                                // opt->callback is false, callback must've been NULL.
+      opt->callback(opt->opaque);
+    } else {
+      break;
+    }
+  }
+
   ngetchx();
   GrayOff();
   ClrScr();

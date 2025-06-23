@@ -116,14 +116,14 @@ typedef struct menu_t {
   menu_item_t (*items)[];
 } menu_t;
 
-inline void DrawMenuCursor4(uint8_t x, uint8_t y);
-inline void DrawMenuCursor8(uint8_t x, uint8_t y);
+inline void DrawMenuCursor4(uint8_t x, uint8_t y, uint8_t attr);
+inline void DrawMenuCursor8(uint8_t x, uint8_t y, uint8_t attr);
 void DrawSimpleMenuBorder(uint8_t x, uint8_t y, uint8_t w, uint8_t h);
 void DrawMenuBorder(border_pattern_t *pattern, uint8_t x, uint8_t y, uint8_t w, uint8_t h);
 
 inline void ResetMenuManager();
 void SetupMenuManager(menu_t *menu, uint8_t initial_idx, uint8_t cursor_sz);
-void StartMenuManager();
+menu_item_t *StartMenuManager();
 
 void DisplayStrTextBox(char *str);
 

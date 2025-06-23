@@ -69,6 +69,14 @@
     DrawStr(x, y, str, attr);                                                                           \
   }
 
+#define DrawCharMono(x, y, str, attr)                                                                   \
+  {                                                                                                     \
+    SetPlane(LIGHT_PLANE);                                                                              \
+    DrawChar(x, y, str, attr);                                                                          \
+    SetPlane(DARK_PLANE);                                                                               \
+    DrawChar(x, y, str, attr);                                                                          \
+  }
+
 #define ClrScrGrey()                                                                                    \
   {                                                                                                     \
     SetPlane(LIGHT_PLANE);                                                                              \
@@ -76,4 +84,16 @@
     SetPlane(DARK_PLANE);                                                                               \
     ClrScr();                                                                                           \
   }
+
+/**
+ * @brief This hack lets us maintain the same call stack level rather than nesting deeper.
+ */
+#define HandleMenuSimple()                                                                              \
+  {{menu_item_t *__tmp_mm_ptr = StartMenuManager();                                                     \
+  if (__tmp_mm_ptr) {                                                                                   \
+    __tmp_mm_ptr->callback(__tmp_mm_ptr->opaque);                                                       \
+  }                                                                                                     \
+  }                                                                                                     \
+  }
+
 #endif

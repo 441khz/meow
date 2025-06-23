@@ -17,15 +17,15 @@ inline void DrawSimpleMenuBorder(uint8_t x, uint8_t y, uint8_t w, uint8_t h) {
 }
 
 /** @brief Draws a 4px menu cursor using an 8px draw routine in XOR. */
-inline void DrawMenuCursor4(uint8_t x, uint8_t y) {
+inline void DrawMenuCursor4(uint8_t x, uint8_t y, uint8_t attr) {
   uint8_t cur[] = {0xA0, 0xB0, 0x80, 0xF0, 0x00, 0x00, 0x00, 0x00};
-  _Sprite8AM(x, y, 4, cur, SPRT_XOR);
+  _Sprite8AM(x, y, 4, cur, attr);
 }
 
 /** @brief Draws a big 8px menu cursor in XOR */
-inline void DrawMenuCursor8(uint8_t x, uint8_t y) {
+inline void DrawMenuCursor8(uint8_t x, uint8_t y, uint8_t attr) {
   uint8_t cur[] = {0x80, 0xC0, 0xE0, 0xF0, 0xF0, 0xE0, 0xC0, 0x80};
-  _Sprite8AM(x, y, 8, cur, SPRT_XOR);
+  _Sprite8AM(x, y, 8, cur, attr);
 }
 
 /**
@@ -60,9 +60,9 @@ void DrawMenuBorder(border_pattern_t *pattern, uint8_t x, uint8_t y, uint8_t w, 
 
   // (slow) clear routine
   SetPlane(DARK_PLANE);
-  ScrRectFill(&(SCR_RECT){{x, y, x + w + pattern->width, y + h}}, INLINE_NOCLIP, A_REVERSE);
+  ScrRectFill(&(SCR_RECT){{x, y, x + w + pattern->width, y + h + pattern->height}}, INLINE_NOCLIP, A_REVERSE);
   SetPlane(LIGHT_PLANE);
-  ScrRectFill(&(SCR_RECT){{x, y, x + w + pattern->width, y + h}}, INLINE_NOCLIP, A_REVERSE);
+  ScrRectFill(&(SCR_RECT){{x, y, x + w + pattern->width, y + h + pattern->height}}, INLINE_NOCLIP, A_REVERSE);
 
   // draw top left corner first
   _Sprite8Grey(x, y, pattern->height, pattern->corners.plane.dark.tl, pattern->corners.plane.light.tl,
@@ -107,7 +107,7 @@ void DrawMenuBorder(border_pattern_t *pattern, uint8_t x, uint8_t y, uint8_t w, 
 
 static menu_t *_MM_ActiveMenu;
 static uint8_t _MM_InitialIdx;
-static void (*_MM_CursorFunc)(uint8_t, uint8_t);
+static void (*_MM_CursorFunc)(uint8_t, uint8_t, uint8_t);
 
 /**
  * @brief Resets the menu manager. Please call this when you're done with the menu manager.
@@ -121,10 +121,10 @@ inline void ResetMenuManager() { _MM_ActiveMenu = NULL; }
  * @param[menu] - The menu to be handled
  * @param[initial_idx] - Which menu option would you wish to begin on
  * @param[cursor_sz] - Either 4px or 8px (for now).
- * @todo - Maybe change cursor_sz to just a `void(*crsr_fn)(u8, u8)` directly?
+ * @todo - Maybe change cursor_sz to just a `void(*crsr_fn)(u8, u8,u8)` directly?
  * Not sure if it should really be the programmers job to keep passing crsr draw ptrs lol.
  * I don't think it'd be too costly to do though since Setup takes crsr_sz already and then
- * switches on it and sets `void(*_MM_CursorFunc)(u8,u8)`.
+ * switches on it and sets `void(*_MM_CursorFunc)(u8,u8,u8)`.
  * @todo - Custom cursors without function ptrs? Obviously with its easy, but... maybe a `cursor_t`..?
  * Seems like bloat.
  */
@@ -155,11 +155,13 @@ void SetupMenuManager(menu_t *menu, uint8_t initial_idx, uint8_t cursor_sz) {
   }
 
 /**
- * @brief Display driver for the menu manager. !!This is a blocking function!!
+ * @brief Display and keyboard driver for the menu handling !!This is a blocking function!!
  * Will display cursor and handle keyboard actions to move the cursor according to menu information
  * set in SetupMenuManager. Ends when ResetMenuManager() is called or ESC is pressed.
+ * Menus do NOT trivially nest.
+ * @todo Actually draw backgrounds where the menu cursors will be drawn. We assume that's done for us.
  */
-void StartMenuManager() {
+menu_item_t *StartMenuManager() {
 
   _ASSERT(_MM_ActiveMenu);
   _ASSERT(_MM_CursorFunc);
@@ -175,12 +177,13 @@ void StartMenuManager() {
   menu_item_t *active_item = &(*(_MM_ActiveMenu->items))[active_menu_item_idx];
   uint8_t candidate_jump_idx;
 
-#ifndef NDEBUG
+#ifdef FALSE
   char dbg_txt[64];
 #endif
 
-  (_MM_CursorFunc)(active_item->cursor_x, active_item->cursor_y); // initial draw
+  (_MM_CursorFunc)(active_item->cursor_x, active_item->cursor_y, SPRT_OR); // initial draw
 
+  // Proof? _MM_ActiveMenu == TRUE <==> StartMenuManager is setup+active & Ints disabled
   while (_MM_ActiveMenu) {
 
     BEGIN_KEYTEST
@@ -197,27 +200,38 @@ void StartMenuManager() {
       // _MM_ActiveMenu = prev_nested_menu;
       // might go with the idea of dtors i had earlier.
       /** @todo also, should we unset _MM_ActiveMenu here? */
+      active_item = NULL;
       break;
     } else if (_keytest_optimized(RR_2ND)) {
-      active_item->callback(active_item->opaque);
-      DEBOUNCE_WAIT();
-      continue; // should be safe if callback calls ResetMM() since loop guard dies.
+      /**
+       * For now, we do not opt to call the callback here. The call stack grows in a way that is
+       * almost completely unneeded. Plus, if you fire YourCallback(), and that draws to the screen,
+       * the Menu Manager does not handle the redraw. So we just return the func ptr to the callback
+       * instead of firing the callback from here (one stack frame deeper). The MenuManager Macro
+       * automates this so it acts like a callback was fired, but it does not grow the callstack. (It is
+       * as if the function is fired immediately _after_ StartMenuManager() is returned.)
+       */
+      // active_item->callback(active_item->opaque);
+      break;
+      // DEBOUNCE_WAIT();
+      // continue; // should be safe if callback calls ResetMM() since loop guard dies.
     } else {
-      continue; // if no keys pressed, just continue.
+      continue;
     }
     END_KEYTEST
 
     if (candidate_jump_idx != MENU_NIL) {
-      _ASSERT(candidate_jump_idx < _MM_ActiveMenu->length); // fault in the menu data itself
+      _ASSERT(candidate_jump_idx < _MM_ActiveMenu->length); // fault in the menu jump table
+      /** @todo Stop assuming cursor size is 8, probably have to pass the size and not just func. */
       // remove the current cursor (since we are XOR)
-      (_MM_CursorFunc)(active_item->cursor_x, active_item->cursor_y);
+      (_MM_CursorFunc)(active_item->cursor_x, active_item->cursor_y, SPRT_XOR);
 
       // set the new active item
       active_menu_item_idx = candidate_jump_idx;
       active_item = &(*(_MM_ActiveMenu->items))[active_menu_item_idx];
 
       // draw the next
-      (_MM_CursorFunc)(active_item->cursor_x, active_item->cursor_y);
+      (_MM_CursorFunc)(active_item->cursor_x, active_item->cursor_y, SPRT_OR);
 
 #ifdef FALSE
       // debug info
@@ -232,10 +246,14 @@ void StartMenuManager() {
     DEBOUNCE_WAIT();
   }
 
+  DEBOUNCE_WAIT();
+
   /* restore ints. may not be necessary depending on how this engine turns out */
   SetIntVec(AUTO_INT_5, vector_handle_int5);
   GraySetInt1Handler(vector_handle_int1);
   /** @todo should we reset menu manager here or should the programmer ? */
+
+  return active_item;
 }
 
 #include "player.h"
@@ -243,7 +261,7 @@ void StartMenuManager() {
 static uint8_t _CursorBlinkReady;
 
 // this can cause interrupt 5/auto-int 5/int5 bugs, we do NOT tailcall prev vector!
-DEFINE_INT_HANDLER(_ToggleCursorBlink) { DrawMenuCursor8(160 - 8 - 4, 100 - 8); }
+DEFINE_INT_HANDLER(_ToggleCursorBlink) { DrawMenuCursor8(160 - 8 - 4, 100 - 16, SPRT_XOR); }
 
 /**
  * @brief Basic routine to display text messages. Everything here's predetermined, and it uses the menu
@@ -255,24 +273,60 @@ DEFINE_INT_HANDLER(_ToggleCursorBlink) { DrawMenuCursor8(160 - 8 - 4, 100 - 8); 
 
 void DisplayStrTextBox(char *str) {
 #define BOX_X 0
-#define BOX_Y 60
-#define BOX_W 160 - 4
-#define BOX_HT 40 - 4
+#define BOX_Y 75
+#define BOX_W 160 - (Player.border->width)
+#define BOX_HT 35 - (Player.border->height)
 
   (void)str;
   (void)_CursorBlinkReady;
 
-  /* we will use PRG to blink the cursor ourselves. pray rowread isn't upset! */
+  /**
+   * we will use the OS timer routines. rr/kt will be slightly upset.
+   * @todo unfortunately, I don't care enough to fix this right now...
+   * will break sound engine and potentially RR unless we redirect to DH?
+   */
+  OSFreeTimer(1);
+  OSRegisterTimer(1, 1);
   INT_HANDLER vector_handle_int5 = GetIntVec(AUTO_INT_5);
   uint16_t prg_prev = PRG_getRate();
-  SetIntVec(AUTO_INT_5, _ToggleCursorBlink);
-  PRG_setRate(2);
+  // SetIntVec(AUTO_INT_5, _ToggleCursorBlink);
 
-  DrawMenuBorder(Player.border, BOX_X, BOX_Y, BOX_W, BOX_HT);
+ // DrawMenuBorder(Player.border, BOX_X, BOX_Y, BOX_W, BOX_HT);
+/* Text writing animation, based on the timer */
+#define FONT_WIDTH 6
+#define FONT_FAMILY F_6x8
+#define SCREEN_WIDTH                                                                                    \
+  160 - (Player.border->width) /** @todo there's gotta be a global for this somewhere lol */
+#define PAD_X (Player.border->width)
+#define PAD_Y (Player.border->height) + 2 // because i said so
+  uint8_t letters_can_fit = (SCREEN_WIDTH - PAD_X) / FONT_WIDTH;
+  char *p = &str[0];
 
-  while (!_keytest(RR_2ND))
-    ;
+  while (*p != '\0') {
 
+    SetIntVec(AUTO_INT_5, vector_handle_int5);
+
+    DrawMenuBorder(Player.border, BOX_X, BOX_Y, BOX_W, BOX_HT);
+    PRG_setRate(prg_prev);
+
+    // printf("lcf: %hu", letters_can_fit);
+    for (uint8_t i = 0; i < letters_can_fit; i++) {
+      if (*p == '\0') break;
+      DrawCharMono(BOX_X + PAD_X + (i * FONT_WIDTH), BOX_Y + PAD_Y, *p, SPRT_OR);
+      p++; // not inling (*p++) since the macro expands!
+      while (!OSTimerExpired(1))
+        ; // delay :)
+    }
+
+    PRG_setRate(2);
+    SetIntVec(AUTO_INT_5, _ToggleCursorBlink); // display blink by changing #5 interrupt vector (lol).
+
+    /* Wait for key press */
+    while (!_keytest(RR_2ND))
+      ;
+
+  }
   SetIntVec(AUTO_INT_5, vector_handle_int5);
   PRG_setRate(prg_prev);
+  DEBOUNCE_WAIT();
 }
