@@ -1,12 +1,11 @@
 #ifndef MACROS_H
 #define MACROS_H
+
 // shitty hack for clipping against the size of the ti89 screen.
 #define INLINE_NOCLIP                                                                                   \
   &(SCR_RECT) {{0, 0, 160, 100}}
 
-/**
- * @todo better error handling for debug
- */
+/** @todo choke interrupts as well */
 #ifndef NDEBUG
 #define _STOP()                                                                                         \
   {                                                                                                     \
@@ -43,7 +42,7 @@
  * @brief Sprite 8 Assume Monochrome internal function
  * Just draw the data on both planes as is
  */
-#define _Sprite8AM(x, y, h, data, attr)                                                                 \
+#define _Sprite8Mono(x, y, h, data, attr)                                                               \
   {                                                                                                     \
     Sprite8(x, y, h, data, GetPlane(DARK_PLANE), attr);                                                 \
     Sprite8(x, y, h, data, GetPlane(LIGHT_PLANE), attr);                                                \
@@ -51,16 +50,18 @@
 
 /**
  * @brief Sprite 8 Grey Assume Linear internal function.
- * Assume the dark plane comes first and is precisely `sizeof(uint8_t[8])` [i.e: 64 bytes] wide.
- * Then assume the dark plane is contiguously after that, same size.
- * @param[data] - ptr to `uint8_t[8][2]` where `[0]=<dark plane data>`, `[1]=<light plane data>`.
+ * Assume the dark plane comes first and is precisely `sizeof(uint8_t[8])` [i.e: 64 bits] wide.
+ * Then assume the dark plane is contiguously after that, same width.
+ * @param[data] - ptr to `uint8_t[2][8]` where `[0]=<dark plane data>`, `[1]=<light plane data>`.
+ * @todo broken
  */
 #define _Sprite8GreyAL(x, y, h, data, attr)                                                             \
   {                                                                                                     \
-    Sprite8(x, y, h, data, GetPlane(DARK_PLANE), attr);                                                 \
-    Sprite8(x, y, h, ((uint8_t *)data + (sizeof(uint8_t[8]))), GetPlane(LIGHT_PLANE), attr);            \
+    Sprite8(x, y, h, ((tile8_t)(data)[0]), GetPlane(DARK_PLANE), attr);                                 \
+    Sprite8(x, y, h, ((tile8_t)(data)[1]), GetPlane(LIGHT_PLANE), attr);                                \
   }
 
+/** @brief Draws a string across both planes */
 #define DrawStrMono(x, y, str, attr)                                                                    \
   {                                                                                                     \
     SetPlane(LIGHT_PLANE);                                                                              \
@@ -69,6 +70,7 @@
     DrawStr(x, y, str, attr);                                                                           \
   }
 
+/** @brief Draws a characters across both planes */
 #define DrawCharMono(x, y, str, attr)                                                                   \
   {                                                                                                     \
     SetPlane(LIGHT_PLANE);                                                                              \
@@ -77,6 +79,7 @@
     DrawChar(x, y, str, attr);                                                                          \
   }
 
+/** @brief Clears both planes */
 #define ClrScrGrey()                                                                                    \
   {                                                                                                     \
     SetPlane(LIGHT_PLANE);                                                                              \
@@ -85,13 +88,13 @@
     ClrScr();                                                                                           \
   }
 
-/**
- * @brief This hack lets us maintain the same call stack level rather than nesting deeper.
- */
+/** @brief Given a properly setup menu, fire callback if able. */
 #define HandleMenuSimple()                                                                              \
   {{menu_item_t *__tmp_mm_ptr = StartMenuManager();                                                     \
   if (__tmp_mm_ptr) {                                                                                   \
-    __tmp_mm_ptr->callback(__tmp_mm_ptr->opaque);                                                       \
+    if (tmp_mm_ptr->callback) {                                                                         \
+      __tmp_mm_ptr->callback(__tmp_mm_ptr->opaque);                                                     \
+    }                                                                                                   \
   }                                                                                                     \
   }                                                                                                     \
   }

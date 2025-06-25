@@ -16,5 +16,10 @@ if(NOT DEFINED ENV{TIGCC})
   message(FATAL_ERROR "Please set the environment TIGCC to point to the TIGCC installation")
 endif()
 
+option(BUILD_GAME "Build meow game" ON)
 
-add_subdirectory(src)
+add_subdirectory(lib)
+
+if(BUILD_GAME)
+  add_subdirectory(src)
+endif()

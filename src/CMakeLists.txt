@@ -1,8 +1,7 @@
 add_executable(main
   main.c
-  menu.c
 )
 
-target_include_directories(main PRIVATE
-  $ENV{TIGCC}/include/c
+target_link_libraries(main PRIVATE
+  meow
 )

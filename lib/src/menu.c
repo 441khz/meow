@@ -1,8 +1,8 @@
 #include <tigcclib.h>
 
-#include "gray.h"
-#include "macros.h"
-#include "menu.h"
+#include <meow/macros.h>
+#include <meow/menu.h>
+#include <meow/player.h>
 
 /**
  * @brief Uses OS routines to draw a simple rectangular border. Doesn't draw background like
@@ -19,13 +19,13 @@ inline void DrawSimpleMenuBorder(uint8_t x, uint8_t y, uint8_t w, uint8_t h) {
 /** @brief Draws a 4px menu cursor using an 8px draw routine in XOR. */
 inline void DrawMenuCursor4(uint8_t x, uint8_t y, uint8_t attr) {
   uint8_t cur[] = {0xA0, 0xB0, 0x80, 0xF0, 0x00, 0x00, 0x00, 0x00};
-  _Sprite8AM(x, y, 4, cur, attr);
+  _Sprite8Mono(x, y, 4, cur, attr);
 }
 
 /** @brief Draws a big 8px menu cursor in XOR */
 inline void DrawMenuCursor8(uint8_t x, uint8_t y, uint8_t attr) {
   uint8_t cur[] = {0x80, 0xC0, 0xE0, 0xF0, 0xF0, 0xE0, 0xC0, 0x80};
-  _Sprite8AM(x, y, 8, cur, attr);
+  _Sprite8Mono(x, y, 8, cur, attr);
 }
 
 /**
@@ -60,9 +60,11 @@ void DrawMenuBorder(border_pattern_t *pattern, uint8_t x, uint8_t y, uint8_t w, 
 
   // (slow) clear routine
   SetPlane(DARK_PLANE);
-  ScrRectFill(&(SCR_RECT){{x, y, x + w + pattern->width, y + h + pattern->height}}, INLINE_NOCLIP, A_REVERSE);
+  ScrRectFill(&(SCR_RECT){{x, y, x + w + pattern->width, y + h + pattern->height}}, INLINE_NOCLIP,
+              A_REVERSE);
   SetPlane(LIGHT_PLANE);
-  ScrRectFill(&(SCR_RECT){{x, y, x + w + pattern->width, y + h + pattern->height}}, INLINE_NOCLIP, A_REVERSE);
+  ScrRectFill(&(SCR_RECT){{x, y, x + w + pattern->width, y + h + pattern->height}}, INLINE_NOCLIP,
+              A_REVERSE);
 
   // draw top left corner first
   _Sprite8Grey(x, y, pattern->height, pattern->corners.plane.dark.tl, pattern->corners.plane.light.tl,
@@ -150,7 +152,7 @@ void SetupMenuManager(menu_t *menu, uint8_t initial_idx, uint8_t cursor_sz) {
 
 /** @brief crude 'debounce' routine to slow polling time */
 #define DEBOUNCE_WAIT()                                                                                 \
-  for (int16_t i = 0; i < INT16_MAX; i++) {                                                             \
+  for (int32_t i = 0; i < (int32_t)INT16_MAX + 16384; i++) {                                            \
     asm("NOP");                                                                                         \
   }
 
@@ -177,13 +179,8 @@ menu_item_t *StartMenuManager() {
   menu_item_t *active_item = &(*(_MM_ActiveMenu->items))[active_menu_item_idx];
   uint8_t candidate_jump_idx;
 
-#ifdef FALSE
-  char dbg_txt[64];
-#endif
-
   (_MM_CursorFunc)(active_item->cursor_x, active_item->cursor_y, SPRT_OR); // initial draw
 
-  // Proof? _MM_ActiveMenu == TRUE <==> StartMenuManager is setup+active & Ints disabled
   while (_MM_ActiveMenu) {
 
     BEGIN_KEYTEST
@@ -196,25 +193,10 @@ menu_item_t *StartMenuManager() {
     } else if (_keytest_optimized(RR_RIGHT)) {
       candidate_jump_idx = active_item->jump.idx.right;
     } else if (_keytest_optimized(RR_ESC)) {
-      /** @todo nested menu support? */
-      // _MM_ActiveMenu = prev_nested_menu;
-      // might go with the idea of dtors i had earlier.
-      /** @todo also, should we unset _MM_ActiveMenu here? */
       active_item = NULL;
       break;
     } else if (_keytest_optimized(RR_2ND)) {
-      /**
-       * For now, we do not opt to call the callback here. The call stack grows in a way that is
-       * almost completely unneeded. Plus, if you fire YourCallback(), and that draws to the screen,
-       * the Menu Manager does not handle the redraw. So we just return the func ptr to the callback
-       * instead of firing the callback from here (one stack frame deeper). The MenuManager Macro
-       * automates this so it acts like a callback was fired, but it does not grow the callstack. (It is
-       * as if the function is fired immediately _after_ StartMenuManager() is returned.)
-       */
-      // active_item->callback(active_item->opaque);
       break;
-      // DEBOUNCE_WAIT();
-      // continue; // should be safe if callback calls ResetMM() since loop guard dies.
     } else {
       continue;
     }
@@ -222,8 +204,8 @@ menu_item_t *StartMenuManager() {
 
     if (candidate_jump_idx != MENU_NIL) {
       _ASSERT(candidate_jump_idx < _MM_ActiveMenu->length); // fault in the menu jump table
+
       /** @todo Stop assuming cursor size is 8, probably have to pass the size and not just func. */
-      // remove the current cursor (since we are XOR)
       (_MM_CursorFunc)(active_item->cursor_x, active_item->cursor_y, SPRT_XOR);
 
       // set the new active item
@@ -232,15 +214,6 @@ menu_item_t *StartMenuManager() {
 
       // draw the next
       (_MM_CursorFunc)(active_item->cursor_x, active_item->cursor_y, SPRT_OR);
-
-#ifdef FALSE
-      // debug info
-      uint8_t restore = FontGetSys();
-      FontSetSys(F_4x6);
-      sprintf(dbg_txt, "Active: %u             ", active_menu_item_idx);
-      DrawStr(0, 15, dbg_txt, A_REVERSE);
-      FontSetSys(restore);
-#endif
     }
 
     DEBOUNCE_WAIT();
@@ -255,8 +228,6 @@ menu_item_t *StartMenuManager() {
 
   return active_item;
 }
-
-#include "player.h"
 
 static uint8_t _CursorBlinkReady;
 
@@ -273,7 +244,8 @@ DEFINE_INT_HANDLER(_ToggleCursorBlink) { DrawMenuCursor8(160 - 8 - 4, 100 - 16, 
 
 void DisplayStrTextBox(char *str) {
 #define BOX_X 0
-#define BOX_Y 75
+/** @todo: the graphics routines are a little buggy. 68 seems wrong (68+(35-4) = 99, not 100). */
+#define BOX_Y 68
 #define BOX_W 160 - (Player.border->width)
 #define BOX_HT 35 - (Player.border->height)
 
@@ -291,12 +263,13 @@ void DisplayStrTextBox(char *str) {
   uint16_t prg_prev = PRG_getRate();
   // SetIntVec(AUTO_INT_5, _ToggleCursorBlink);
 
- // DrawMenuBorder(Player.border, BOX_X, BOX_Y, BOX_W, BOX_HT);
+  // DrawMenuBorder(Player.border, BOX_X, BOX_Y, BOX_W, BOX_HT);
 /* Text writing animation, based on the timer */
 #define FONT_WIDTH 6
 #define FONT_FAMILY F_6x8
-#define SCREEN_WIDTH                                                                                    \
-  160 - (Player.border->width) /** @todo there's gotta be a global for this somewhere lol */
+
+/** @todo there's gotta be a global for this somewhere lol */
+#define SCREEN_WIDTH 160 - (Player.border->width)
 #define PAD_X (Player.border->width)
 #define PAD_Y (Player.border->height) + 2 // because i said so
   uint8_t letters_can_fit = (SCREEN_WIDTH - PAD_X) / FONT_WIDTH;
@@ -311,7 +284,8 @@ void DisplayStrTextBox(char *str) {
 
     // printf("lcf: %hu", letters_can_fit);
     for (uint8_t i = 0; i < letters_can_fit; i++) {
-      if (*p == '\0') break;
+      if (*p == '\0')
+        break;
       DrawCharMono(BOX_X + PAD_X + (i * FONT_WIDTH), BOX_Y + PAD_Y, *p, SPRT_OR);
       p++; // not inling (*p++) since the macro expands!
       while (!OSTimerExpired(1))
@@ -324,7 +298,6 @@ void DisplayStrTextBox(char *str) {
     /* Wait for key press */
     while (!_keytest(RR_2ND))
       ;
-
   }
   SetIntVec(AUTO_INT_5, vector_handle_int5);
   PRG_setRate(prg_prev);

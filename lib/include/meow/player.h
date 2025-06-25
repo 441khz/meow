@@ -1,7 +1,7 @@
 #ifndef PLAYER_H
 #define PLAYER_H
 
-#include "menu.h"
+#include <meow/menu.h>
 
 typedef struct {
   border_pattern_t *border;

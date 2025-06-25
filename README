@@ -14,8 +14,12 @@ CMake itself works fine in the command line...
 Remember: CMake Rebuild command must specify CMAKE_TOOLCHAIN_FILE.
 This should be good for vscode:
     cmake .. -DCMAKE_TOOLCHAIN_FILE=../cmake/toolchain.cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+You may also specify
+    -DBUILD_GAME=<ON/OFF>
+if you only wish to build the library, or if you wish to build game code too. For now, by default, it's ON.
 
 Known bugs:
 
     Ninja fucks everything up because tigcc's frontend is garbage that doesn't handle dependency files
     Also Cmake's ninja generator doesn't really know how to respect set(CMAKE_DEPENDS_USE_COMPILER OFF)
+    libmeow.a cannot be built as an archive because of some linker issue

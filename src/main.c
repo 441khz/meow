@@ -2,12 +2,13 @@
 
 #define USE_TI89
 
-#include "kbd.h"
-#include "macros.h"
-#include "menu.h"
-#include "player.h"
 #include <stdbool.h>
 #include <tigcclib.h>
+
+#include <meow/macros.h>
+#include <meow/map.h>
+#include <meow/menu.h>
+#include <meow/player.h>
 
 player_t Player;
 border_pattern_t BORDER_DEFAULT;
@@ -35,7 +36,7 @@ border_pattern_t BORDER_PKMN;
 
 void GameDrawMainMenu() {
 
-  ClrScrGrey(); // i don't believe the XOR of the DMB call(l. 48) will get everything unfortunately.
+  ClrScrGrey();
 
   // positions of the menu immediately at the border's inner edge.
   int menu_padx = MENU_PADX; // MENU_X + Player.border->width;
@@ -43,8 +44,6 @@ void GameDrawMainMenu() {
 
   FontSetSys(F_6x8);
 
-  // greyscale requires you to work with multiple grey planes.
-  // so black text requires setting both planes!
   DrawMenuBorder(Player.border, MENU_X, MENU_Y, MENU_W, MENU_HT);
 
   char u[64];
@@ -58,7 +57,7 @@ void GameDrawMainMenu() {
 }
 
 #define NUM_BORDERS 2
-void GameMainMenuToggleBorder(void *cursor) {
+void GameMainMenuToggleBorder() {
 
   if (Player.border_number >= NUM_BORDERS - 1) {
     Player.border_number = 0;
@@ -78,19 +77,8 @@ void GameMainMenuToggleBorder(void *cursor) {
   }
 
   GameDrawMainMenu();
-
-  (void)cursor;
 }
 
-/**
- * @brief I'm extremely frustrated at this.
- * Why is it that the C standard does not allow initialization of non-integer/pointer struct elements
- * at compile time?
- * This is only allowed in GCC8+! We are on GCC4! So I must do this initialization in some function
- * scope!? It's not elegant. I don't want to do this for all of my tilesets and stuff! Then again, in
- * the end, I probably will need to, since the tileset info will probably be put in a DLL/loaded from
- * file. Could someone please send some help!? What can I do to avoid this ugly initialization!?
- */
 void GameInitializePlayerAndBorders() {
   BORDER_DEFAULT = (border_pattern_t){
       .pattern.plane.light.horz_top = {0xF0, 0x00, 0x00, 0xF0, 0x00, 0x00, 0x00, 0x00},
@@ -134,12 +122,6 @@ void GameInitializePlayerAndBorders() {
   Player.border = &BORDER_DEFAULT;
 }
 
-void dummy(void *opaque) {
-  (void)opaque;
-  return;
-}
-
-/* commented and fully-featured demo of the menu system :) */
 void _main(void) {
 
   GameInitializePlayerAndBorders();
@@ -155,44 +137,29 @@ void _main(void) {
   // positions of the menu immediately at the border's inner edge.
   // int menu_padx = MENU_X + Player.border->width;
   // int menu_pady = MENU_Y + Player.border->height;
-  // We'd have to re-initialize the whole menu system to get the cursor offsets to display correct.
-  // menu_padx/pady change when border size changes, but we never call SetupMM more than once.
-  // I'm too lazy for that right now, so fixed offset of 8.
 
-  char p[] = "OK to wipe save data? The quick brown fox jumped over the lazy kitty. This is a long long string.";
   /* step 1 - set up handlers and menu cursors */
-  menu_item_t item0 = {
-      .cursor_x = MENU_PADX + OP0_CURSOR_X,
-      .cursor_y = MENU_PADY + OP0_CURSOR_Y,
-      .callback = (void (*)(void *))
-          DisplayStrTextBox, /** @todo everythings a pointer anyways. less strict callback typing? */
-      .opaque = p,
-      .jump.table = {MENU_NIL, 1, MENU_NIL, MENU_NIL}}; // {up,dn,lf,rg}
+  menu_item_t item0 = {.cursor_x = MENU_PADX + OP0_CURSOR_X,
+                       .cursor_y = MENU_PADY + OP0_CURSOR_Y,
+                       .callback = (void (*)(void *))DrawMap,
+                       .jump.table = {MENU_NIL, 1, MENU_NIL, MENU_NIL}};
   menu_item_t item1 = {.cursor_x = MENU_PADX + OP1_CURSOR_X,
                        .cursor_y = MENU_PADY + OP1_CURSOR_Y,
                        .callback = GameMainMenuToggleBorder,
-                       .opaque = (void *)1, // the option to set the initial idx to on redraw.
                        .jump.table = {0, MENU_NIL, MENU_NIL, MENU_NIL}};
 
   menu_item_t menu_opts[] = {item0, item1};
 
   menu_t menu = (menu_t){.length = sizeof(menu_opts) / sizeof(menu_item_t),
-                         .items = (menu_item_t(*)[])(&menu_opts)};
+                         .items = (menu_item_t (*)[])(&menu_opts)};
 
-  uint8_t initial_idx = 0;
-  while (1) {
-    SetupMenuManager(
-        &menu, initial_idx,
-        CURSOR_WIDTH); // not entirely necessary since no other menus or interrupts should be called.
-    menu_item_t *opt = StartMenuManager();
-    if (opt && opt->callback) { // you can determine how you exited: if opt is false, ESC. if
-                                // opt->callback is false, callback must've been NULL.
-      opt->callback(opt->opaque);
-    } else {
-      break;
-    }
+  SetupMenuManager(&menu, 0, CURSOR_WIDTH);
+
+  menu_item_t *opt = StartMenuManager();
+  if (opt && opt->callback) {
+    opt->callback(opt->opaque);
   }
-
+  // DEBOUNCE_WAIT();
   ngetchx();
   GrayOff();
   ClrScr();
