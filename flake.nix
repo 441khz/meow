@@ -27,6 +27,12 @@
             cmake
             ninja
 
+            python3Packages.python
+            python3Packages.pillow
+            python3Packages.numpy
+
+            imagemagick
+
             tiTools.gcc4ti
             tiTools.tiemu
             llvmPackages.clang-tools
