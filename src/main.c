@@ -14,71 +14,10 @@ player_t Player;
 border_pattern_t BORDER_DEFAULT;
 border_pattern_t BORDER_PKMN;
 
-/* step 1 - draw menu */
-#define MENU_X 0
-#define MENU_Y 0
-#define MENU_W 100
-#define MENU_HT 60
-
-// how many pixels to offset the text from the cursor's rightmost edge (in the X direction)
-#define CRSR_PAD_X 0
-#define CURSOR_WIDTH 8
-
-// positions of the option cursor relative to the inside of the border frame
-#define OP0_CURSOR_X 4
-#define OP0_CURSOR_Y 10
-#define OP1_CURSOR_X 4
-#define OP1_CURSOR_Y 25
-
-// lazy
-#define MENU_PADX MENU_X + 8
-#define MENU_PADY MENU_Y + 8
-
-void GameDrawMainMenu() {
-
-  ClrScrGrey();
-
-  // positions of the menu immediately at the border's inner edge.
-  int menu_padx = MENU_PADX; // MENU_X + Player.border->width;
-  int menu_pady = MENU_PADY; // MENU_Y + Player.border->height;
-
-  FontSetSys(F_6x8);
-
-  DrawMenuBorder(Player.border, MENU_X, MENU_Y, MENU_W, MENU_HT);
-
-  char u[64];
-  FontSetSys(F_6x8);
-  sprintf(u, "Border%d   ", Player.border_number);
-
-  DrawStrMono(menu_padx + OP0_CURSOR_X + CURSOR_WIDTH + CRSR_PAD_X, menu_pady + OP0_CURSOR_Y, "New Game",
-              A_NORMAL);
-  DrawStrMono(menu_padx + OP1_CURSOR_X + CURSOR_WIDTH + CRSR_PAD_X, menu_pady + OP1_CURSOR_Y, u,
-              A_NORMAL);
-}
-
-#define NUM_BORDERS 2
-void GameMainMenuToggleBorder() {
-
-  if (Player.border_number >= NUM_BORDERS - 1) {
-    Player.border_number = 0;
-  } else {
-    Player.border_number++;
-  }
-  switch (Player.border_number) {
-  case 0:
-    Player.border = &BORDER_DEFAULT;
-    break;
-  case 1:
-    Player.border = &BORDER_PKMN;
-    break;
-  default:
-    _STOP();
-    break;
-  }
-
-  GameDrawMainMenu();
-}
-
+/**
+ * @todo Layout the border structs in a neat, packed way so that we can initialize
+ * them with a strange cast (a la map_t) at the top-level [straight array].
+ */
 void GameInitializePlayerAndBorders() {
   BORDER_DEFAULT = (border_pattern_t){
       .pattern.plane.light.horz_top = {0xF0, 0x00, 0x00, 0xF0, 0x00, 0x00, 0x00, 0x00},
@@ -119,48 +58,165 @@ void GameInitializePlayerAndBorders() {
       .width = 8,
       .height = 8};
   memset(&Player, 0, sizeof(player_t));
-  Player.border = &BORDER_DEFAULT;
+  Player.border = &BORDER_PKMN;
 }
+
+void DemoDrawVfRect(short attr) {
+  WIN_RECT c = (WIN_RECT){.x0 = Player.vf.draw_pos.x,
+                          .y0 = Player.vf.draw_pos.y,
+                          .x1 = Player.vf.draw_pos.x + (16 * Player.vf.width),
+                          .y1 = Player.vf.draw_pos.y + (16 * Player.vf.height)};
+  DrawClipRect(&c, INLINE_NOCLIP, attr);
+}
+void DemoMovePl() { /* tbd */ }
+
+void DemoScrlVf() {
+
+  /* lol */
+  void ScrlVfClear() {
+    ClrScrGrey();
+    DrawMap(&Player.vf);
+    DrawMenuBorder(Player.border, 0, 76, 90, 20 - 4);
+    DrawStrMono(10, 85, "VF Scroll", A_NORMAL);
+  }
+
+  ScrlVfClear();
+  while (!_keytest(RR_2ND)) {
+
+    if (_keytest(RR_LEFT)) {
+      Player.vf.tile_pos.x -= 1;
+    } else if (_keytest(RR_RIGHT)) {
+      Player.vf.tile_pos.x += 1;
+    } else if (_keytest(RR_UP)) {
+      Player.vf.tile_pos.y -= 1;
+    } else if (_keytest(RR_DOWN)) {
+      Player.vf.tile_pos.y += 1;
+    } else {
+      continue;
+    }
+
+    ScrlVfClear();
+    DEBOUNCE_WAIT();
+  }
+}
+
+void DemoGrowVf() {
+  ClrScrGrey();
+  DrawMap(&Player.vf);
+  DrawMenuBorder(Player.border, 0, 76, 90, 20 - 4);
+  DrawStrMono(10, 85, "Set VF Dims ", A_NORMAL);
+
+  DemoDrawVfRect(A_NORMAL);
+  while (!_keytest(RR_2ND)) {
+
+    if (_keytest(RR_LEFT)) {
+      DemoDrawVfRect(A_REVERSE);
+      Player.vf.width -= 1;
+    } else if (_keytest(RR_RIGHT)) {
+      DemoDrawVfRect(A_REVERSE);
+      Player.vf.width += 1;
+    } else if (_keytest(RR_UP)) {
+      DemoDrawVfRect(A_REVERSE);
+      Player.vf.height -= 1;
+    } else if (_keytest(RR_DOWN)) {
+      DemoDrawVfRect(A_REVERSE);
+      Player.vf.height += 1;
+    } else {
+      continue;
+    }
+
+    DemoDrawVfRect(A_NORMAL);
+    DEBOUNCE_WAIT();
+  }
+}
+
+void DemoMoveVf() {
+
+  ClrScrGrey();
+  // DrawMap(&Player.vf);
+  DrawMenuBorder(Player.border, 0, 76, 90, 20 - 4);
+  DrawStrMono(10, 85, "Set VF Pos ", A_NORMAL);
+
+  DemoDrawVfRect(A_NORMAL);
+  while (!_keytest(RR_2ND)) {
+
+    if (_keytest(RR_LEFT)) {
+      DemoDrawVfRect(A_REVERSE);
+      Player.vf.draw_pos.x -= 4;
+    } else if (_keytest(RR_RIGHT)) {
+      DemoDrawVfRect(A_REVERSE);
+      Player.vf.draw_pos.x += 4;
+    } else if (_keytest(RR_UP)) {
+      DemoDrawVfRect(A_REVERSE);
+      Player.vf.draw_pos.y -= 4;
+    } else if (_keytest(RR_DOWN)) {
+      DemoDrawVfRect(A_REVERSE);
+      Player.vf.draw_pos.y += 4;
+    } else {
+      continue;
+    }
+
+    DemoDrawVfRect(A_NORMAL);
+    DEBOUNCE_WAIT();
+  }
+}
+
+static menu_item_t ITEMS[4] = {
+
+    {.cursor_x = 10,
+     .cursor_y = 85,
+     .callback = DemoMoveVf,
+     .jump.table = {MENU_NIL, MENU_NIL, MENU_NIL, 1}},
+    {.cursor_x = 50, .cursor_y = 85, .callback = DemoGrowVf, .jump.table = {MENU_NIL, MENU_NIL, 0, 2}},
+    {.cursor_x = 90, .cursor_y = 85, .callback = DemoScrlVf, .jump.table = {MENU_NIL, MENU_NIL, 1, 3}},
+    {.cursor_x = 130,
+     .cursor_y = 85,
+     .callback = DemoMovePl,
+     .jump.table = {MENU_NIL, MENU_NIL, 2, MENU_NIL}}
+
+};
+
+static menu_t const BOTTOM_BAR = {.length = 4, .items = (menu_item_t(*)[])(&ITEMS)};
 
 void _main(void) {
 
   GameInitializePlayerAndBorders();
-  ClrScr();
   GrayOn();
 
-  /* step 0 - reset mm */
-  ResetMenuManager();
-  ClrScrGrey();
+  Player.vf = (vf_t){.draw_pos = (vec2_draw_t){.x = 0, .y = 0},
+                     .tile_pos = (vec2_tile_t){.x = 3, .y = 2},
+                     .height = 4,
+                     .width = 4};
 
-  GameDrawMainMenu();
+  Player.pos = (vec2_tile_t){.x = 3, .y = 5};
 
-  // positions of the menu immediately at the border's inner edge.
-  // int menu_padx = MENU_X + Player.border->width;
-  // int menu_pady = MENU_Y + Player.border->height;
+  while (1) {
 
-  /* step 1 - set up handlers and menu cursors */
-  menu_item_t item0 = {.cursor_x = MENU_PADX + OP0_CURSOR_X,
-                       .cursor_y = MENU_PADY + OP0_CURSOR_Y,
-                       .callback = (void (*)(void *))DrawMap,
-                       .jump.table = {MENU_NIL, 1, MENU_NIL, MENU_NIL}};
-  menu_item_t item1 = {.cursor_x = MENU_PADX + OP1_CURSOR_X,
-                       .cursor_y = MENU_PADY + OP1_CURSOR_Y,
-                       .callback = GameMainMenuToggleBorder,
-                       .jump.table = {0, MENU_NIL, MENU_NIL, MENU_NIL}};
+    /* step 0 - reset mm */
+    ResetMenuManager();
+    ClrScrGrey();
 
-  menu_item_t menu_opts[] = {item0, item1};
+    DrawMap(&Player.vf);
 
-  menu_t menu = (menu_t){.length = sizeof(menu_opts) / sizeof(menu_item_t),
-                         .items = (menu_item_t (*)[])(&menu_opts)};
+    SetupMenuManager((menu_t *)&BOTTOM_BAR, 0, 8);
+    DrawMenuBorder(Player.border, 0, 76, 160 - 4, 20 - 4);
+    DrawStrMono(18, 85, "Move", A_NORMAL);
+    DrawStrMono(58, 85, "Grow", A_NORMAL);
+    DrawStrMono(98, 85, "Scrl", A_NORMAL);
+    DrawStrMono(138, 85, "P", A_NORMAL);
 
-  SetupMenuManager(&menu, 0, CURSOR_WIDTH);
+    menu_item_t *p = StartMenuManager();
+    if (p) {
+      if (p->callback) {
+        p->callback(p->opaque);
+      }
+    } else {
+      break;
+    }
 
-  menu_item_t *opt = StartMenuManager();
-  if (opt && opt->callback) {
-    opt->callback(opt->opaque);
+    DEBOUNCE_WAIT();
   }
-  // DEBOUNCE_WAIT();
-  ngetchx();
+
   GrayOff();
   ClrScr();
 }

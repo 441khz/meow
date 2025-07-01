@@ -25,3 +25,5 @@ compile_commands.json
 # Doxygen
 doc/html/*
 doc/latex/*
+lib/doc/html/*
+lib/doc/latex/*

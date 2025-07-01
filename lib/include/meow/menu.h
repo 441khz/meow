@@ -114,6 +114,6 @@ inline void ResetMenuManager();
 void SetupMenuManager(menu_t *menu, uint8_t initial_idx, uint8_t cursor_sz);
 menu_item_t *StartMenuManager();
 
-void DisplayStrTextBox(char *str);
+void DisplayStrTextBox(char str[]);
 
 #endif

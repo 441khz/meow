@@ -39,6 +39,27 @@
   }
 
 /**
+ * @brief Sprite 16 Grey internal function
+ * @param[dark] - dark plane data
+ * @param[light] - light plane data
+ */
+#define _Sprite16Grey(x, y, h, dark, light, attr)                                                       \
+  {                                                                                                     \
+    Sprite16(x, y, h, dark, GetPlane(DARK_PLANE), attr);                                                \
+    Sprite16(x, y, h, light, GetPlane(LIGHT_PLANE), attr);                                              \
+  }
+
+/**
+ * @brief Sprite 16 Assume Monochrome internal function
+ * Just draw the data on both planes as is
+ */
+#define _Sprite16Mono(x, y, h, data, attr)                                                              \
+  {                                                                                                     \
+    Sprite16(x, y, h, data, GetPlane(DARK_PLANE), attr);                                                \
+    Sprite16(x, y, h, data, GetPlane(LIGHT_PLANE), attr);                                               \
+  }
+
+/**
  * @brief Sprite 8 Assume Monochrome internal function
  * Just draw the data on both planes as is
  */
@@ -92,11 +113,19 @@
 #define HandleMenuSimple()                                                                              \
   {{menu_item_t *__tmp_mm_ptr = StartMenuManager();                                                     \
   if (__tmp_mm_ptr) {                                                                                   \
-    if (tmp_mm_ptr->callback) {                                                                         \
+    if (__tmp_mm_ptr->callback) {                                                                       \
       __tmp_mm_ptr->callback(__tmp_mm_ptr->opaque);                                                     \
     }                                                                                                   \
   }                                                                                                     \
   }                                                                                                     \
+  }
+
+#define CRSR_X_PAD (Player.border->width)
+
+/** @brief crude 'debounce' routine to slow polling time */
+#define DEBOUNCE_WAIT()                                                                                 \
+  for (int32_t i = 0; i < (int32_t)INT16_MAX + 16384; i++) {                                            \
+    asm("NOP");                                                                                         \
   }
 
 #endif

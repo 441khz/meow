@@ -25,7 +25,6 @@
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
             cmake
-            ninja
 
             python3Packages.python
             python3Packages.pillow
@@ -41,7 +40,7 @@
           ];
 
           TIGCC = "${pkgs.tiTools.gcc4ti}";
-          CLANGD_FLAGS = "--header-insertion=never";
+          CLANGD_FLAGS = "--header-insertion=never"; #
         };
 
         packages = {

@@ -150,12 +150,6 @@ void SetupMenuManager(menu_t *menu, uint8_t initial_idx, uint8_t cursor_sz) {
   }
 }
 
-/** @brief crude 'debounce' routine to slow polling time */
-#define DEBOUNCE_WAIT()                                                                                 \
-  for (int32_t i = 0; i < (int32_t)INT16_MAX + 16384; i++) {                                            \
-    asm("NOP");                                                                                         \
-  }
-
 /**
  * @brief Display and keyboard driver for the menu handling !!This is a blocking function!!
  * Will display cursor and handle keyboard actions to move the cursor according to menu information
@@ -203,7 +197,7 @@ menu_item_t *StartMenuManager() {
     END_KEYTEST
 
     if (candidate_jump_idx != MENU_NIL) {
-      _ASSERT(candidate_jump_idx < _MM_ActiveMenu->length); // fault in the menu jump table
+      _ASSERT(candidate_jump_idx < _MM_ActiveMenu->length); // fault in the menu jump table. check length?
 
       /** @todo Stop assuming cursor size is 8, probably have to pass the size and not just func. */
       (_MM_CursorFunc)(active_item->cursor_x, active_item->cursor_y, SPRT_XOR);
@@ -229,8 +223,6 @@ menu_item_t *StartMenuManager() {
   return active_item;
 }
 
-static uint8_t _CursorBlinkReady;
-
 // this can cause interrupt 5/auto-int 5/int5 bugs, we do NOT tailcall prev vector!
 DEFINE_INT_HANDLER(_ToggleCursorBlink) { DrawMenuCursor8(160 - 8 - 4, 100 - 16, SPRT_XOR); }
 
@@ -242,15 +234,12 @@ DEFINE_INT_HANDLER(_ToggleCursorBlink) { DrawMenuCursor8(160 - 8 - 4, 100 - 16, 
  * @todo unfinished... 6/19/2025
  */
 
-void DisplayStrTextBox(char *str) {
+void DisplayStrTextBox(char str[]) {
 #define BOX_X 0
 /** @todo: the graphics routines are a little buggy. 68 seems wrong (68+(35-4) = 99, not 100). */
 #define BOX_Y 68
 #define BOX_W 160 - (Player.border->width)
 #define BOX_HT 35 - (Player.border->height)
-
-  (void)str;
-  (void)_CursorBlinkReady;
 
   /**
    * we will use the OS timer routines. rr/kt will be slightly upset.
